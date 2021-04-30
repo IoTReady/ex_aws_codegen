@@ -9,6 +9,8 @@ default_template = 'template.ex'
 all_types_strings = {}
 all_types = {}
 
+built_in_types = ['binary', 'boolean', 'float', 'integer', 'map', 'string', 'number', 'port', 'error_message']
+
 @click.group()
 def cli():
     pass
@@ -37,7 +39,7 @@ def get_snake_case(str):
 
 def get_elixir_type(aws_type):
     type_mapping = {
-        'blob': 'blob', 
+        'blob': 'binary', 
         'boolean': 'boolean', 
         'double': 'float', 
         'integer': 'integer', 
@@ -75,6 +77,9 @@ def insert_types(doc, shapes, only_required = True):
     complex_types = ['list', 'structure']
     for k,v in shapes.items():
         type_name = get_snake_case(k)
+        if type_name in built_in_types or type_name in all_types:
+            # Do not redefine elixir's built-in types or previously defined types
+            continue
         type_string = type_template.replace('$type_name', type_name)
         aws_type = v['type']
         if aws_type not in complex_types:
@@ -95,9 +100,7 @@ def insert_types(doc, shapes, only_required = True):
                     for key in v['required']:
                         value = get_snake_case(v['members'][key]['shape'])
                         struct += key + ': ' + value + ', '
-                        # print(k, type_name, key, value)
                         all_types[type_name][key] = value
-                        # all_map_params[key] = value
                     struct = struct[:-2] + '}'
                 else:
                     struct = '%{}'
@@ -107,7 +110,6 @@ def insert_types(doc, shapes, only_required = True):
                     for key,b in v['members'].items():
                         value = get_snake_case(b['shape'])
                         struct += key + ': ' + value + ', '
-                        # all_types[type_name][key] = value
                     struct = struct[:-2] + '}'
                 else:
                     struct = '%{}'
@@ -130,7 +132,6 @@ def insert_functions(doc, operations, shapes):
     function_template = """\n\t@spec $func_name($input_type) :: $output_type\n\tdef $func_name($param_list = params) do\n\t%{@query | http_method: $http_method, path: "$uri", params: params} |> execute()\n\tend\n"""
     all_functions = ''
     for op in operations.values():
-        # print(op)
         func_name = get_snake_case(op['name'])
         func_string = function_template.replace('$func_name', func_name)
         output_type = op.get('output')
