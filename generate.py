@@ -68,7 +68,7 @@ def insert_metadata(doc, metadata):
     service_name = get_snake_case(metadata['endpointPrefix'])
     return doc.replace('$service', ':{}'.format(service_name))
 
-def insert_types(doc, shapes):
+def insert_types(doc, shapes, only_required = True):
     type_template = """\n\t@type $type_name :: $type_value\n"""
     all_types_string = ''
     complex_types = ['list', 'structure']
@@ -87,14 +87,24 @@ def insert_types(doc, shapes):
             type_string = type_string.replace('$type_value', '[{}]'.format(elixir_type))
             all_types[type_name] = elixir_type
         elif aws_type == 'structure':
-            if len(v['members']):
-                struct = '%{'
-                for key,b in v['members'].items():
-                    value = get_snake_case(b['shape'])
-                    struct += key + ': ' + value + ', '
-                struct = struct[:-2] + '}'
+            if only_required:
+                if v.get('required'):
+                    struct = '%{'
+                    for key in v['required']:
+                        value = get_snake_case(v['members'][key]['shape'])
+                        struct += key + ': ' + value + ', '
+                    struct = struct[:-2] + '}'
+                else:
+                    struct = '%{}'
             else:
-                struct = '%{}'
+                if len(v['members']):
+                    struct = '%{'
+                    for key,b in v['members'].items():
+                        value = get_snake_case(b['shape'])
+                        struct += key + ': ' + value + ', '
+                    struct = struct[:-2] + '}'
+                else:
+                    struct = '%{}'
             type_string = type_string.replace('$type_value', struct)
             all_types[type_name] = struct
         else:
