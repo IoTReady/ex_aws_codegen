@@ -1,10 +1,7 @@
 defmodule $modulename do
 
-  # @doc """
   # version: $version
-
-  # $metadata
-  # """
+  $metadata
 
   @service $service
 

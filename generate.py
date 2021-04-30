@@ -63,7 +63,7 @@ def insert_version(doc, version):
 def insert_metadata(doc, metadata):
     metadata_string = ''
     for key, value in metadata.items():
-        metadata_string += '{}: {}\n\t'.format(key, value)
+        metadata_string += '#\t{}: {}\n\t'.format(key, value)
     doc = doc.replace('$metadata', metadata_string)
     service_name = get_snake_case(metadata['endpointPrefix'])
     return doc.replace('$service', ':{}'.format(service_name))
