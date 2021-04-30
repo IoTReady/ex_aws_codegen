@@ -125,10 +125,6 @@ def get_param_name(input_type, param_id):
     except:
         print(input_type, param_id, all_types[input_type])
         return 'certificate_id'
-    # if param_id == 'caCertificateId':
-    #     return all_types[input_type]['certificateId']
-    # else:
-    #     return all_types[input_type][param_id]
 
 def insert_functions(doc, operations, shapes):
     function_template = """\n\t@spec $func_name($input_type) :: $output_type\n\tdef $func_name($param_list = params) do\n\t%{@query | http_method: $http_method, path: "$uri", params: params} |> execute()\n\tend\n"""
@@ -151,17 +147,8 @@ def insert_functions(doc, operations, shapes):
         uri = op['http']['requestUri']
         # not sure why some uris have a + in the param list (for multiple?)
         uri = uri.replace('+', '')
-        # for part in uri.split('/'):
-        #     if part.startswith('{'):
-        #         part = part.replace("{", "").replace("}", "")
-        #         try:
-        #             all_types[input_type][part]
-        #             # print(part, input_type, all_types[input_type][part])
-        #         except:
-        #             print(part, input_type, all_types[input_type])
         uri = re.split("[{}]", uri)
         uri = [part for part in uri if part]
-        # uri = ["#{"+all_types[input_type][part]+"}" if not part.startswith('/') else part for part in uri]
         uri = ["#{"+get_param_name(input_type, part)+"}" if not part.startswith('/') else part for part in uri]
         uri = ''.join(uri)
         func_string = func_string.replace('$uri', uri)
