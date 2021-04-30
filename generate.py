@@ -6,6 +6,7 @@ import re
 
 default_template = 'template.ex'
 
+all_types_strings = {}
 all_types = {}
 
 @click.group()
@@ -87,12 +88,16 @@ def insert_types(doc, shapes, only_required = True):
             type_string = type_string.replace('$type_value', '[{}]'.format(elixir_type))
             all_types[type_name] = elixir_type
         elif aws_type == 'structure':
+            all_types[type_name] = {}
             if only_required:
                 if v.get('required'):
                     struct = '%{'
                     for key in v['required']:
                         value = get_snake_case(v['members'][key]['shape'])
                         struct += key + ': ' + value + ', '
+                        # print(k, type_name, key, value)
+                        all_types[type_name][key] = value
+                        # all_map_params[key] = value
                     struct = struct[:-2] + '}'
                 else:
                     struct = '%{}'
@@ -102,21 +107,34 @@ def insert_types(doc, shapes, only_required = True):
                     for key,b in v['members'].items():
                         value = get_snake_case(b['shape'])
                         struct += key + ': ' + value + ', '
+                        # all_types[type_name][key] = value
                     struct = struct[:-2] + '}'
                 else:
                     struct = '%{}'
             type_string = type_string.replace('$type_value', struct)
-            all_types[type_name] = struct
+            all_types_strings[type_name] = struct
         else:
             print(k,v)
             continue
         all_types_string += type_string
     return doc.replace('$types', all_types_string)
 
+def get_param_name(input_type, param_id):
+    try:
+        return all_types[input_type][param_id]
+    except:
+        print(input_type, param_id, all_types[input_type])
+        return 'certificate_id'
+    # if param_id == 'caCertificateId':
+    #     return all_types[input_type]['certificateId']
+    # else:
+    #     return all_types[input_type][param_id]
+
 def insert_functions(doc, operations, shapes):
     function_template = """\n\t@spec $func_name($input_type) :: $output_type\n\tdef $func_name($param_list = params) do\n\t%{@query | http_method: $http_method, path: "$uri", params: params} |> execute()\n\tend\n"""
     all_functions = ''
     for op in operations.values():
+        # print(op)
         func_name = get_snake_case(op['name'])
         func_string = function_template.replace('$func_name', func_name)
         output_type = op.get('output')
@@ -127,15 +145,24 @@ def insert_functions(doc, operations, shapes):
             func_string = func_string.replace('$output_type', 'nil')
         input_type = get_snake_case(op['input']['shape'])
         func_string = func_string.replace('$input_type', input_type)
-        func_string = func_string.replace('$param_list', all_types[input_type])
+        func_string = func_string.replace('$param_list', all_types_strings[input_type])
         http_method = op['http']['method']
         func_string = func_string.replace('$http_method', get_http_method(http_method))
         uri = op['http']['requestUri']
         # not sure why some uris have a + in the param list (for multiple?)
         uri = uri.replace('+', '')
+        # for part in uri.split('/'):
+        #     if part.startswith('{'):
+        #         part = part.replace("{", "").replace("}", "")
+        #         try:
+        #             all_types[input_type][part]
+        #             # print(part, input_type, all_types[input_type][part])
+        #         except:
+        #             print(part, input_type, all_types[input_type])
         uri = re.split("[{}]", uri)
         uri = [part for part in uri if part]
-        uri = ["#{"+get_snake_case(part)+"}" if not part.startswith('/') else part for part in uri]
+        # uri = ["#{"+all_types[input_type][part]+"}" if not part.startswith('/') else part for part in uri]
+        uri = ["#{"+get_param_name(input_type, part)+"}" if not part.startswith('/') else part for part in uri]
         uri = ''.join(uri)
         func_string = func_string.replace('$uri', uri)
         all_functions += func_string
