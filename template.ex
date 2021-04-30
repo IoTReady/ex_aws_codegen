@@ -1,11 +1,22 @@
-defmodule $ModuleName do
+defmodule $modulename do
 
-  @doc """
-  version: $version
+  # @doc """
+  # version: $version
 
-  $metadata
-  """
+  # $metadata
+  # """
 
   @service $service
+
+  @query %ExAws.Operation.RestQuery {service: @service}
+
+  $types
+
+  $functions
+
+  defp execute(query) do
+    {:ok, %{status_code: 200, body: body}} = query |> ExAws.request(service_override: :"execute-api")
+    body |> Jason.decode!()
+  end
 
 end
