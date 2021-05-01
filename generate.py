@@ -61,7 +61,7 @@ def get_http_method(http_method):
     }
     return methods_mapping[http_method]
 
-def parse_shapes(shapes, only_required = False):
+def parse_shapes(shapes, only_required = True):
     all_types = {}
     built_in_types = ['binary', 'boolean', 'float', 'integer', 'map', 'string', 'number', 'port']
     complex_types = ['list', 'structure']
@@ -80,8 +80,9 @@ def parse_shapes(shapes, only_required = False):
         elif aws_type == 'structure':
             all_types[type_name] = {'shape': 'structure', 'def': {}}
             keys = []
-            if only_required and v.get('required'):
-                keys = v['required']
+            if only_required:
+                if v.get('required'):
+                    keys = v['required']
             elif len(v['members']):
                 keys = list(v['members'].keys())
             for key in keys:
@@ -89,10 +90,9 @@ def parse_shapes(shapes, only_required = False):
                     value = get_snake_case(v['members'][key]['shape'])
                     all_types[type_name]['def'][key] = value
                 except:
-                    print("keys", keys)
-                    print(k,v, key)
+                    print("Unknown key", k, v, keys, key)
         else:
-            print(k,v)
+            print("Unknown shape", k,v)
             continue
         
     return all_types
