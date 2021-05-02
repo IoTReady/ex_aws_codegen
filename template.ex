@@ -23,7 +23,11 @@ defmodule {{modulename}} do
   {% for key, value in functions.items() %}
   @spec {{key}}({{value.input_type}}) :: {{value.output_type}}
   def {{key}}(%{{value.params | tojson | replace('"', '') }} = params) do
+    {% if value.http_method == ':get' %}
     %{@query | http_method: {{value.http_method}}, path: "{{value.uri}}", params: params}
+    {% else %}
+    %{@query | http_method: {{value.http_method}}, path: "{{value.uri}}", body: params}
+    {% endif %}
   end
   {% endfor %}
 
